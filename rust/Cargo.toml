@@ -1,0 +1,8 @@
+[package]
+name = "advent"
+version = "0.1.0"
+authors = ["Colin Gilgenbach <colin@gilgenbach.net>"]
+edition = "2021"
+
+[dependencies]
+clap = { version = "4.5.53", features = ["derive"] }
