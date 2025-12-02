@@ -2,45 +2,6 @@ use std::{fs::File, io::{BufReader, BufRead}};
 
 use super::{input_dir, verbosity};
 
-struct MultiIter<T, I>
-where I: Iterator<Item = T> {
-    iters: Vec<I>
-}
-
-impl<T, I> MultiIter<T, I>
-where I: Iterator<Item = T>
-{
-    pub fn new<IntoI>(iters: Vec<IntoI>) -> Self
-    where IntoI: IntoIterator<Item = T, IntoIter = I>
-    {
-        Self {
-            iters: iters.into_iter().map(|i| i.into_iter()).collect()
-        }
-    }
-}
-
-impl<T, I> Iterator for MultiIter<T, I>
-where I: Iterator<Item = T> {
-    type Item = Vec<T>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.iters.iter_mut().map(|i| i.next()).collect()
-    }
-}
-
-fn split_n<'a, T>(slice: &'a [T], n: usize) -> Option<Vec<&'a [T]>> {
-    if slice.len() % n != 0 { return None; }
-    let len = slice.len() / n;
-    Some((0..n).map(|i| &slice[i * len..(i + 1) * len]).collect())
-}
-
-fn all_equal<T: PartialEq>(chars: &[T]) -> bool {
-    if chars.len() == 0 { true } else {
-        let first_char = &chars[0];
-        chars[1..].iter().all(|c| *c == *first_char)
-    }
-}
-
 fn parse_range<'a>(range: &'a str) -> Result<(u64, u64), String> {
     range.trim().split_once('-').and_then(|(l, r)| match (l.parse(), r.parse()) {
         (Ok(l), Ok(r)) => Some((l, r)),
@@ -49,10 +10,10 @@ fn parse_range<'a>(range: &'a str) -> Result<(u64, u64), String> {
 }
 
 fn is_repeated(s: &str, n: usize) -> bool {
-    match split_n(s.as_bytes(), n) {
-        None => false,
-        Some(slices) => MultiIter::new(slices).all(|chars| all_equal(&chars))
-    }
+    if s.len() % n != 0 { return false; }
+    s[n..].bytes().zip(
+        std::iter::repeat(&s[..n]).flat_map(|s| s.bytes())
+    ).all(|(l, r)| l == r)
 }
 
 fn check_range(range: (u64, u64), verbosity: u8) -> u64 {
@@ -62,8 +23,8 @@ fn check_range(range: (u64, u64), verbosity: u8) -> u64 {
     }
     for id in range.0..=range.1 {
         let s = id.to_string();
-        for repeat_n in 2..=s.len() {
-            if is_repeated(&s, repeat_n) {
+        for repeat_len in 1..=s.len()/2 {
+            if is_repeated(&s, repeat_len) {
                 if verbosity > 0 {
                     println!("  invalid id {}", id);
                 }
