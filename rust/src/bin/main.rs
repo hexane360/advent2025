@@ -19,12 +19,14 @@ enum Problem {
         #[arg(long)]
         test: bool,
     },
+    Day2 { },
 }
 
 impl Problem {
     fn run(&self) -> Result<(), String> {
         match self {
             Self::Day1 { test } => { advent::day1::run(*test) },
+            Self::Day2 { } => { advent::day2::run() },
         }
     }
 }

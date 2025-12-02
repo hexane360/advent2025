@@ -3,6 +3,7 @@
 use std::{sync::OnceLock, path::{Path, PathBuf}, sync::atomic::{AtomicU8, Ordering}};
 
 pub mod day1;
+pub mod day2;
 
 static VERBOSITY: AtomicU8 = AtomicU8::new(0);
 static INPUT_DIR: OnceLock<PathBuf> = OnceLock::new();
