@@ -16,8 +16,9 @@ fn is_repeated(s: &str, n: usize) -> bool {
     ).all(|(l, r)| l == r)
 }
 
-fn check_range(range: (u64, u64), verbosity: u8) -> u64 {
-    let mut sum: u64 = 0;
+fn check_range(range: (u64, u64), verbosity: u8) -> (u64, u64) {
+    let mut part1_sum: u64 = 0;
+    let mut part2_sum: u64 = 0;
     if verbosity > 0 {
         println!("range: ({}, {})", range.0, range.1);
     }
@@ -28,12 +29,13 @@ fn check_range(range: (u64, u64), verbosity: u8) -> u64 {
                 if verbosity > 0 {
                     println!("  invalid id {}", id);
                 }
-                sum = sum.checked_add(id).expect("Overflow");
+                part2_sum = part2_sum.checked_add(id).expect("Overflow");
+                if repeat_len == s.len()/2  { part1_sum += id; }
                 break;
             }
         }
     }
-    sum
+    (part1_sum, part2_sum)
 }
 
 pub fn run() -> Result<(), String> {
@@ -44,15 +46,19 @@ pub fn run() -> Result<(), String> {
 
     let file = File::open(input_path).expect("Failed to open input file");
 
-    let mut sum: u64 = 0;
+    let mut part1_sum: u64 = 0;
+    let mut part2_sum: u64 = 0;
 
     for range in BufReader::new(file).split(b',') {
         let range = parse_range(
             range.as_ref().map_err(|e| format!("Error reading file: {}", e))
                 .and_then(|b| str::from_utf8(b).map_err(|_| format!("Invalid utf-8 in file")))?
         )?;
-        sum = sum.checked_add(check_range(range, verbosity)).ok_or_else(|| format!("Overflow"))?;
+        let (part1, part2) = check_range(range, verbosity);
+        part2_sum = part2_sum.checked_add(part2).ok_or_else(|| format!("Overflow"))?;
+        part1_sum += part1;
     }
-    println!("sum: {}", sum);
+    println!("Part 1 sum: {}", part1_sum);
+    println!("Part 2 sum: {}", part2_sum);
     Ok(())
 }
