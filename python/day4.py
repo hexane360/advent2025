@@ -27,7 +27,8 @@ def print_array(arr: NDArray[numpy.bool_]):
 def process(input_path: t.Union[str, Path], verbose: bool = False):
     arr = load_array(input_path)
     weights = numpy.ones((3,), numpy.uint8)
-    n_total = numpy.sum(arr, dtype=numpy.uint64)
+    n_start = numpy.sum(arr, dtype=numpy.uint64)
+    n = n_start
 
     if verbose:
         print("Initial state:")
@@ -39,19 +40,20 @@ def process(input_path: t.Union[str, Path], verbose: bool = False):
             convolved = scipy.ndimage.convolve1d(convolved, weights, axis=axis, mode='constant')
 
         available = arr & (convolved < 5)  # 4 neighbors + self
-        n_available = numpy.sum(available)
-        print(f"Step {i}, {n_available:3} box(es) available")
+        n_available = numpy.sum(available, dtype=numpy.uint64)
         if not n_available:
             break
+
+        arr ^= available
+        n -= n_available
+        print(f"Step {i}, removed {n_available:3} box(es)")
+
         if verbose:
             print_array(arr)
 
-        arr ^= available
-
-    print(f"Finished in {i} step(s), final state:")
+    print(f"Finished in {i-1} step(s), final state:")
     print_array(arr)
-    n_final = numpy.sum(arr, dtype=numpy.uint64)
-    print(f"{n_total} -> {n_final} boxes (removed {n_total - n_final})")
+    print(f"{n_start} -> {n} boxes (removed {n_start - n})")
 
 
 def main():
