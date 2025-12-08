@@ -1,4 +1,5 @@
 #![feature(int_roundings)]
+#![feature(ascii_char)]
 
 use std::{sync::OnceLock, path::{Path, PathBuf}, sync::atomic::{AtomicU8, Ordering}};
 
@@ -7,6 +8,7 @@ pub mod day2;
 pub mod day3;
 pub mod day4;
 pub mod day5;
+pub mod day6;
 
 static VERBOSITY: AtomicU8 = AtomicU8::new(0);
 static INPUT_DIR: OnceLock<PathBuf> = OnceLock::new();

@@ -32,6 +32,10 @@ enum Problem {
         #[arg(long)]
         test: bool,
     },
+    Day6 {
+        #[arg(long)]
+        test: bool,
+    },
 }
 
 impl Problem {
@@ -42,6 +46,7 @@ impl Problem {
             Self::Day3 { test } => { advent::day3::run(*test) },
             Self::Day4 { test } => { advent::day4::run(*test) },
             Self::Day5 { test } => { advent::day5::run(*test) },
+            Self::Day6 { test } => { advent::day6::run(*test) },
         }
     }
 }
