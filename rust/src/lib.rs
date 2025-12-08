@@ -9,6 +9,7 @@ pub mod day3;
 pub mod day4;
 pub mod day5;
 pub mod day6;
+pub mod day7;
 
 static VERBOSITY: AtomicU8 = AtomicU8::new(0);
 static INPUT_DIR: OnceLock<PathBuf> = OnceLock::new();
