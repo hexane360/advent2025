@@ -2,3 +2,5 @@ rust/target
 
 *.pyc
 *.pyo
+
+.DS_Store

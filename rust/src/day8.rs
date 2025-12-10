@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs::File, io::{BufRead, BufReader}};
+use std::{collections::HashMap, fs::File, hash::Hash, io::{BufRead, BufReader}};
 
 use itertools::Itertools;
 use petgraph::unionfind::UnionFind;
@@ -27,15 +27,17 @@ pub fn sqdist(coord1: &[u64; 3], coord2: &[u64; 3]) -> u64 {
     coord1.iter().zip(coord2).map(|(&l, &r)| l.abs_diff(r).pow(2)).sum()
 }
 
-pub fn connected_components(union_find: UnionFind<u32>) -> Vec<u32> {
-    let mut components: HashMap<u32, u32> = HashMap::new();
-    for label in union_find.into_labeling() {
+
+fn count_occurrences<T: Eq + Hash, I: IntoIterator<Item = T>>(iter: I) -> Vec<u32> {
+    let mut components: HashMap<T, u32> = HashMap::new();
+    for label in iter.into_iter() {
         *components.entry(label).or_default() += 1;
     }
     let mut components: Vec<u32> = components.values().copied().collect();
     components.sort_by(|a, b| b.cmp(a));
     components
 }
+
 
 pub fn run(test: bool) -> Result<(), String> {
     let verbosity = verbosity();
@@ -69,7 +71,7 @@ pub fn run(test: bool) -> Result<(), String> {
     for &(i, j) in part1_pairs.iter() {
         union_find.union(i, j);
     }
-    let components = connected_components(union_find.clone());
+    let components = count_occurrences(union_find.clone().into_labeling());
 
     println!("Part 1 sizes: {:?}", components);
     println!("Part 1 product: {}", components[..3].iter().product::<u32>());
