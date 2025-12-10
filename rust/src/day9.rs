@@ -1,5 +1,6 @@
-use std::{fmt, fs::File, io::{BufRead, BufReader}, iter};
+use std::{collections::HashMap, fmt, fs::File, io::{BufRead, BufReader}};
 
+use itertools::Itertools;
 use ndarray::Array2;
 
 use super::{input_dir, verbosity};
@@ -27,46 +28,43 @@ pub fn square_area(coord1: &[u64; 2], coord2: &[u64; 2]) -> u64 {
 }
 
 
-fn poly_segments(poly: &[[u64; 2]]) -> impl Iterator<Item=(&[u64; 2], &[u64; 2])> {
-    poly.iter().zip(&poly[1..]).chain(iter::once((poly.last().unwrap(), &poly[0])))
-}
-
-
 struct PolyGrid {
-    origin: [u64; 2],
+    x_map: HashMap<u64, usize>,
+    y_map: HashMap<u64, usize>,
     grid: Array2<bool>,
 }
 
 impl PolyGrid {
-    pub fn new(min: [u64; 2], max: [u64; 2]) -> Self {
-        let size: [usize; 2] = [(max[1] + 1 - min[1]) as usize, (max[0] + 1 - min[0]) as usize];
-        println!("grid size: {size:?}");
-        println!("min: {min:?}  max: {max:?}");
+    pub fn new(x_map: HashMap<u64, usize>, y_map: HashMap<u64, usize>) -> Self {
+        let size = [y_map.len(), x_map.len()];
         Self {
-            origin: min,
+            x_map, y_map,
             grid: Array2::from_elem(size, false),
         }
     }
 
-    pub fn make(poly: &[[u64; 2]]) -> Self {
-        let min: [u64; 2] = [0, 1].map(|i| poly.iter().map(|v| v[i]).min().unwrap());
-        let max: [u64; 2] = [0, 1].map(|i| poly.iter().map(|v| v[i]).max().unwrap());
+    pub fn compress_point(&self, pt: &[u64; 2]) -> [usize; 2] {
+        [*self.x_map.get(&pt[0]).expect("Missing point in x_map"), *self.y_map.get(&pt[1]).expect("Missing point in y_map")]
+    }
 
-        let mut grid = Self::new(min, max);
-        grid.draw_poly_inside(poly);
-        grid.draw_poly_outside(poly);
+    pub fn make(poly: &[[u64; 2]]) -> Self {
+        let x_map = compress_points(poly, 0);
+        let y_map = compress_points(poly, 1);
+        let mut grid = Self::new(x_map, y_map);
+
+        let mut compressed_poly: Vec<[usize; 2]> = poly.iter().map(|pt| grid.compress_point(pt)).collect();
+        // close polygon
+        compressed_poly.push(compressed_poly[0]);
+
+        grid.draw_poly_inside(&compressed_poly);
+        grid.draw_poly_outside(&compressed_poly);
         grid
     }
 
-    pub fn draw_poly_inside(&mut self, poly: &[[u64; 2]]) {
-        for (start, end) in poly_segments(poly) {
-            //if start[0] != end[0] { continue; }
-            // vertical segment
-
-            let x = (start[0].max(end[0]) - self.origin[0]) as usize;
-            let start_y = (start[1] - self.origin[1]) as usize;
-            let end_y = (end[1] - self.origin[1]) as usize;
-            let (start_y, end_y) = if start_y > end_y { (end_y, start_y) } else { (start_y, end_y) };
+    fn draw_poly_inside(&mut self, poly: &[[usize; 2]]) {
+        for (start, end) in poly.iter().zip(&poly[1..]) {
+            let x = start[0].max(end[0]);
+            let (start_y, end_y) = if start[1] > end[1] { (end[1], start[1]) } else { (start[1], end[1]) };
 
             for y in start_y..=end_y {
                 //self.grid[[y, x]] = true;
@@ -77,25 +75,20 @@ impl PolyGrid {
         }
     }
 
-    pub fn draw_poly_outside(&mut self, poly: &[[u64; 2]]) {
-        for (start, end) in poly_segments(poly) {
-            let start_x = (start[0] - self.origin[0]) as usize;
-            let start_y = (start[1] - self.origin[1]) as usize;
-
+    fn draw_poly_outside(&mut self, poly: &[[usize; 2]]) {
+        for (start, end) in poly.iter().zip(&poly[1..]) {
             if start[0] == end[0] {
                 // vertical segment
-                let end_y = (end[1] - self.origin[1]) as usize;
-                let (start_y, end_y) = if start_y > end_y { (end_y, start_y) } else { (start_y, end_y) };
+                let (start_y, end_y) = if start[1] > end[1] { (end[1], start[1]) } else { (start[1], end[1]) };
 
                 for y in start_y..=end_y {
-                    self.grid[[y, start_x]] = true;
+                    self.grid[[y, start[0]]] = true;
                 }
             } else if start[1] == end[1] {
                 // horzontal segment
-                let end_x = (end[0] - self.origin[0]) as usize;
-                let (start_x, end_x) = if start_x > end_x { (end_x, start_x) } else { (start_x, end_x) };
+                let (start_x, end_x) = if start[0] > end[0] { (end[0], start[0]) } else { (start[0], end[0]) };
                 for x in start_x..=end_x {
-                    self.grid[[start_y, x]] = true;
+                    self.grid[[start[1], x]] = true;
                 }
             } else {
                 panic!("Diagonal line segment");
@@ -104,9 +97,8 @@ impl PolyGrid {
     }
 
     pub fn part2_rect_valid(&self, coord1: &[u64; 2], coord2: &[u64; 2]) -> bool {
-        let mut coord1 = [(coord1[0] - self.origin[0]) as usize, (coord1[1] - self.origin[1]) as usize];
-        let mut coord2 = [(coord2[0] - self.origin[0]) as usize, (coord2[1] - self.origin[1]) as usize];
-
+        let mut coord1 = self.compress_point(coord1);
+        let mut coord2 = self.compress_point(coord2);
         if coord1[0] > coord2[0] { std::mem::swap(&mut coord1[0], &mut coord2[0]); }
         if coord1[1] > coord2[1] { std::mem::swap(&mut coord1[1], &mut coord2[1]); }
 
@@ -132,6 +124,14 @@ impl fmt::Display for PolyGrid {
         Ok(())
     }
 }
+
+
+pub fn compress_points(points: &[[u64; 2]], idx: usize) -> HashMap<u64, usize> {
+    let mut indices = points.iter().map(|v| v[idx]).unique().collect_vec();
+    indices.sort();
+    indices.into_iter().enumerate().map(|(i, v)| (v, i)).collect()
+}
+
 
 pub fn run(test: bool) -> Result<(), String> {
     let verbosity = verbosity();
