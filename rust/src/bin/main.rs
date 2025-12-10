@@ -47,6 +47,8 @@ enum Problem {
     Day9 {
         #[arg(long)]
         test: bool,
+        #[arg(long = "no-compress", action = clap::ArgAction::SetFalse)]
+        compress: bool,
     },
 }
 
@@ -61,7 +63,7 @@ impl Problem {
             Self::Day6 { test } => { advent::day6::run(*test) },
             Self::Day7 { test } => { advent::day7::run(*test) },
             Self::Day8 { test } => { advent::day8::run(*test) },
-            Self::Day9 { test } => { advent::day9::run(*test) },
+            Self::Day9 { test, compress } => { advent::day9::run(*test, *compress) },
         }
     }
 }

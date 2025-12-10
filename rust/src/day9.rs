@@ -47,51 +47,42 @@ impl PolyGrid {
         [*self.x_map.get(&pt[0]).expect("Missing point in x_map"), *self.y_map.get(&pt[1]).expect("Missing point in y_map")]
     }
 
-    pub fn make(poly: &[[u64; 2]]) -> Self {
-        let x_map = compress_points(poly, 0);
-        let y_map = compress_points(poly, 1);
-        let mut grid = Self::new(x_map, y_map);
+    pub fn make(poly: &[[u64; 2]], compress: bool) -> Self {
+        let mut grid = if compress {
+            Self::new(compress_points(poly, 0), compress_points(poly, 1))
+        } else {
+            Self::new(uncompress_points(poly, 0), uncompress_points(poly, 1))
+        };
 
         let mut compressed_poly: Vec<[usize; 2]> = poly.iter().map(|pt| grid.compress_point(pt)).collect();
         // close polygon
         compressed_poly.push(compressed_poly[0]);
 
-        grid.draw_poly_inside(&compressed_poly);
-        grid.draw_poly_outside(&compressed_poly);
+        grid.draw_poly(&compressed_poly);
         grid
     }
 
-    fn draw_poly_inside(&mut self, poly: &[[usize; 2]]) {
+    fn draw_poly(&mut self, poly: &[[usize; 2]]) {
+        // even-odd fill vertical lines
         for (start, end) in poly.iter().zip(&poly[1..]) {
-            let x = start[0].max(end[0]);
+            if start[1] == end[1] { continue }
+            // for downwards lines, consider x outside. for upwards lines, consider x inside.
+            let start_x = if start[1] > end[1] { start[0] } else { start[0] + 1 };
             let (start_y, end_y) = if start[1] > end[1] { (end[1], start[1]) } else { (start[1], end[1]) };
-
-            for y in start_y..=end_y {
-                //self.grid[[y, x]] = true;
-                for x in x+1..self.grid.shape()[1] {
+            for y in start_y..end_y {
+                for x in start_x..self.grid.shape()[1] {
                     self.grid[[y, x]] ^= true;
                 }
             }
         }
-    }
 
-    fn draw_poly_outside(&mut self, poly: &[[usize; 2]]) {
+        // and then draw horizontal lines
         for (start, end) in poly.iter().zip(&poly[1..]) {
-            if start[0] == end[0] {
-                // vertical segment
-                let (start_y, end_y) = if start[1] > end[1] { (end[1], start[1]) } else { (start[1], end[1]) };
+            if start[0] == end[0] { continue; }
 
-                for y in start_y..=end_y {
-                    self.grid[[y, start[0]]] = true;
-                }
-            } else if start[1] == end[1] {
-                // horzontal segment
-                let (start_x, end_x) = if start[0] > end[0] { (end[0], start[0]) } else { (start[0], end[0]) };
-                for x in start_x..=end_x {
-                    self.grid[[start[1], x]] = true;
-                }
-            } else {
-                panic!("Diagonal line segment");
+            let (start_x, end_x) = if start[0] > end[0] { (end[0], start[0]) } else { (start[0], end[0]) };
+            for x in start_x..=end_x {
+                self.grid[[start[1], x]] = true;
             }
         }
     }
@@ -125,15 +116,18 @@ impl fmt::Display for PolyGrid {
     }
 }
 
-
-pub fn compress_points(points: &[[u64; 2]], idx: usize) -> HashMap<u64, usize> {
+fn compress_points(points: &[[u64; 2]], idx: usize) -> HashMap<u64, usize> {
     let mut indices = points.iter().map(|v| v[idx]).unique().collect_vec();
     indices.sort();
     indices.into_iter().enumerate().map(|(i, v)| (v, i)).collect()
 }
 
+fn uncompress_points(points: &[[u64; 2]], idx: usize) -> HashMap<u64, usize> {
+    let (min, max) = (points.iter().map(|v| v[idx]).min().unwrap(), points.iter().map(|v| v[idx]).max().unwrap());
+    (min-1..=max+1).into_iter().enumerate().map(|(i, v)| (v, i)).collect()
+}
 
-pub fn run(test: bool) -> Result<(), String> {
+pub fn run(test: bool, compress: bool) -> Result<(), String> {
     let verbosity = verbosity();
 
     let mut input_path = input_dir().to_owned();
@@ -160,7 +154,7 @@ pub fn run(test: bool) -> Result<(), String> {
 
     // part 2
 
-    let grid = PolyGrid::make(&tiles);
+    let grid = PolyGrid::make(&tiles, compress);
 
     if verbosity > 0 {
         println!("Grid:\n{}", grid);
