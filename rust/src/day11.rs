@@ -1,8 +1,8 @@
 use std::{collections::HashMap, fs::File, io::{BufRead, BufReader}};
 
-use petgraph::{Direction::Outgoing, algo::toposort, graph::{DiGraph, NodeIndex}, visit::{Topo, Visitable}};
+use petgraph::{Direction::Outgoing, algo::toposort, graph::{DiGraph, NodeIndex}};
 
-use super::{input_dir, verbosity};
+use super::input_dir;
 
 
 pub fn parse_dag<R: BufRead>(file: R) -> Result<(DiGraph<(), ()>, HashMap<Box<str>, NodeIndex<u32>>), String> {
@@ -38,8 +38,6 @@ pub fn parse_dag<R: BufRead>(file: R) -> Result<(DiGraph<(), ()>, HashMap<Box<st
 
 
 pub fn run(test: bool) -> Result<(), String> {
-    let verbosity = verbosity();
-
     let mut input_path = input_dir().to_owned();
     input_path.push(if test { "day11_test.txt" } else { "day11.txt" });
 
